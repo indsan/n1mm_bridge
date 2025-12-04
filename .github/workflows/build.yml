@@ -1,0 +1,67 @@
+name: Build Windows EXE (32 & 64 bit)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build_and_release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 64-bit
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          architecture: 'x64'
+
+      - name: Install dependencies (64-bit)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller==5.13.0
+          pip install -r requirements.txt
+
+      - name: Build 64-bit exe
+        run: |
+          pyinstaller --onefile --noconsole --name yb0sps_bridge_win64 yb0sps_bridge.py
+          echo "64-bit build done"
+        shell: bash
+
+      - name: Setup Python 32-bit
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          architecture: 'x86'
+
+      - name: Install dependencies (32-bit)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller==5.13.0
+          pip install -r requirements.txt
+
+      - name: Build 32-bit exe
+        run: |
+          pyinstaller --onefile --noconsole --name yb0sps_bridge_win32 yb0sps_bridge.py
+          echo "32-bit build done"
+        shell: bash
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p release_artifacts
+          cp dist/yb0sps_bridge_win64.exe release_artifacts/yb0sps_bridge_win64.exe
+          cp dist/yb0sps_bridge_win32.exe release_artifacts/yb0sps_bridge_win32.exe
+          ls -la release_artifacts
+
+      - name: Create Release (if not exists) and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release_artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
